@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Criar Matriz de Teste</title>
+        <script type="text/javascript" src="../libs/d3.v3/d3.v3.js"></script>
+        <script type="text/javascript" src="../libs/jquery-1.10.2.js"></script>
+        <style type="text/css">
+            .datapoint {
+                r: 5;
+                fill: black;
+                fill-opacity: .5;
+            }
+        </style>
+    </head>
+    
+    <body>
+        <button id="calcular">Capturar Coordenadas</button> <br>
+        <script type="text/javascript">
+            var data = [];
+            
+            nPixels = 500; //Quantidade de pixels do quadro.
+            var margens = {top: 10, right: 10, bottom: 60, left: 60};
+
+            var width = nPixels - margens.left - margens.right;
+            var height = nPixels - margens.top - margens.bottom;
+            
+
+            var svg = d3.select("body")
+                .append("svg")
+                .attr("width", width + margens.left + margens.right)
+                .attr("height", height + margens.top + margens.bottom)
+                .append("g")
+                .attr("transform", "translate("+margens.left+","+margens.top+")");
+        
+            svg.append("g")
+                .append("rect")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("stroke", "#000")
+                .attr("stroke-width", 2)
+                .attr("fill", "none");
+                
+            document.write("<br>");
+            
+            for(i = 0; i < 30; i++)
+            {
+                var x = parseInt(Math.random() * width);
+                var y = parseInt(Math.random() * height);
+                var file = {
+                    label: 'file '+ (i+1), //Caso necessite inserir nomes nos círculos (até o momento não é utilizado)
+                    x: x,
+                    y: y
+                };
+                data.push(file);
+            }
+               
+            var pontos = svg.selectAll(".datapoint")
+                            .data(data)
+                            .enter()
+                            .append("circle")
+                            .attr("class", "datapoint")
+                            .attr("id", function(d){ return d.label;}) //Caso necessite inserir nomes nos círculos (até o momento não é utilizado)
+                            .attr("cx", function(d){ return d.x;})
+                            .attr("cy", function(d){ return d.y;})
+                            .attr("r", 5)
+                            .call(d3.behavior.drag().on("drag", move));
+
+            function move(){
+                    this.parentNode.appendChild(this);
+                    var dragTarget = d3.select(this);
+                    dragTarget
+                        .attr("cx", function(){
+                            var rx = d3.event.dx + parseInt(dragTarget.attr("cx"));
+                            if(rx > width)
+                            {
+                                return width;
+                            }
+                            if(rx < 0)
+                            {
+                                return 0;
+                            }
+                            return d3.event.dx + parseInt(dragTarget.attr("cx"));
+                        })
+                        .attr("cy", function(){
+                            var ry = d3.event.dy + parseInt(dragTarget.attr("cy"));
+                            if(ry > height)
+                            {
+                                return height;
+                            }
+                            if(ry < 0)
+                            {
+                                return 0;
+                            }
+                            return d3.event.dy + parseInt(dragTarget.attr("cy"));
+                        });
+               };
+        </script>
+        
+        <script type="text/javascript">
+//Ação do botão "Capturar Coordenadas"
+            //Capturando as novas posições dos elementos
+            document.getElementById("calcular").onclick = function (){
+                    var data = [];
+                    var circles = document.getElementsByTagName("circle");
+                    console.log(circles);
+                    for(i = 0; i < circles.length; i++){
+                        var file = {
+                            label: "file "+(i+1),
+                            x: circles.item(i).attributes[2].value,
+                            y: circles.item(i).attributes[3].value
+                        };
+                        data.push(file);
+                    }
+                    
+                    
+                    //Calculando Distâncias e armazenando na Matriz
+                    var matriz = [];
+                    for(i = 0; i < data.length; i++){
+                        var distancias = [];
+                        for(j = 0; j < data.length; j++){
+                            var p = Math.pow((data[i].x - data[j].x), 2);
+                            var q = Math.pow((data[i].y - data[j].y), 2);
+                            var d = Math.sqrt(p+q);
+                            distancias[j] = parseInt(d);
+                        }
+
+                        matriz.push(distancias);
+                    }
+
+                    //Imprimindo Matriz de Distancias                    
+                    d3.selectAll("table").remove();
+
+                    d3.select("body").append("div")
+                        .attr("id", "tabela");
+
+                    d3.select("#tabela")
+                        .append("table")
+                        .style("border-collapse", "collapse")
+                        .style("border", "2px black solid")
+
+                        .selectAll("tr")
+                        .data(matriz)
+                        .enter().append("tr")
+
+                        .selectAll("td")
+                        .data(function(d){return d;})
+                        .enter().append("td")
+                        .style("border", "1px black solid")
+                        .style("padding", "5px")
+                        .text(function(d){return d;})
+                        .style("font-size", "12px");
+                    
+                    var nomes = [];
+                    for(i = 0 ; i < data.length ; i++){
+                        nomes.push(data[i].label);
+                    }
+                    
+                    //Preparando strings para o servidor
+                    var jstr_dis = JSON.stringify(matriz);
+                    var jstr_nom = JSON.stringify(nomes);
+                    
+                    //Enviando dados para PHP gerar o arquivo JSON
+                    $.post('php/gerar_json.php', {distancias: jstr_dis, nomes: jstr_nom});
+                    
+            };
+        </script>
+        
+    </body>
+</html>
